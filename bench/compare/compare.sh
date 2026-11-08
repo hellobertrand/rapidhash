@@ -20,11 +20,10 @@ mkdir -p "$B/old" "$B/new"
 if [ -f "$REF" ]; then cp "$REF" "$B/old/rapidhash.h"
 else git -C "$here" show "$REF:rapidhash.h" > "$B/old/rapidhash.h"; fi
 cp "$NEW" "$B/new/rapidhash.h"
-NEWDEF="-DHAS_PREMIX"
-if [ -n "$AA" ]; then cp "$B/old/rapidhash.h" "$B/new/rapidhash.h"; NEWDEF="-DFAKE_PREMIX"; fi
+if [ -n "$AA" ]; then cp "$B/old/rapidhash.h" "$B/new/rapidhash.h"; fi
 ALIGN="-falign-functions=64"
-$CC $CFLAGS $ALIGN -I"$B/old" -DPFX=ref             -c "$here/wrap.c" -o "$B/ref.o"
-$CC $CFLAGS $ALIGN -I"$B/new" -DPFX=new $NEWDEF -c "$here/wrap.c" -o "$B/new.o"
+$CC $CFLAGS $ALIGN -I"$B/old" -DPFX=ref -c "$here/wrap.c" -o "$B/ref.o"
+$CC $CFLAGS $ALIGN -I"$B/new" -DPFX=new -c "$here/wrap.c" -o "$B/new.o"
 $CC -O2 -I"$here" "$here/check.c" "$B/ref.o" "$B/new.o" -o "$B/check"
 $CC -O2 -I"$here" "$here/mb.c"    "$B/ref.o" "$B/new.o" -o "$B/mb"
 echo "== $(uname -sm) | $($CC --version 2>/dev/null | head -1) | CFLAGS=$CFLAGS | old=$REF${AA:+ | AA calibration: old vs old}"

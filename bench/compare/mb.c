@@ -16,18 +16,17 @@ int main(int argc,char**argv){
   if(argc>1) for(int a=1;a<argc&&nl<64;a++) L[nl++]=strtoul(argv[a],0,10); else for(;nl<sizeof def/sizeof*def;nl++) L[nl]=def[nl];
   for(size_t i=0;i<nl;i++) if(L[i]>maxl) maxl=L[i];
   buf=malloc(maxl+128); for(size_t i=0;i<maxl+128;i++) buf[i]=(unsigned char)(i*2654435761u>>13);
-  uint64_t s=g_seed, pm=new_pm(s);
-  struct {const char*n; hf r,w; int p;} P[]={{"rapidhash",ref_h0,new_h0,0},{"Micro",ref_m0,new_m0,0},{"Nano",ref_n0,new_n0,0},
-    {"withSeed",ref_h,new_h,0},{"premixed*",ref_h,new_hp,1}};
+  uint64_t s=g_seed;
+  struct {const char*n; hf r,w;} P[]={{"rapidhash",ref_h0,new_h0},{"Micro",ref_m0,new_m0},{"Nano",ref_n0,new_n0},
+    {"withSeed",ref_h,new_h}};
   printf("%-10s %7s | %10s %10s %7s | %10s %10s %7s\n","variant","len","thr old","thr new","gain","lat old","lat new","gain");
-  for(int pi=0;pi<5;pi++){ for(size_t li=0;li<nl;li++){ size_t len=L[li];
+  for(int pi=0;pi<4;pi++){ for(size_t li=0;li<nl;li++){ size_t len=L[li];
     long it = len<=256 ? 20000000 : 200000000/(long)len; if(it<2000) it=2000;
-    double tr=1e18,tn=1e18,lr=1e18,ln=1e18, v; uint64_t sw=P[pi].p?pm:s;
+    double tr=1e18,tn=1e18,lr=1e18,ln=1e18, v;
     for(int rep=0;rep<7;rep++){
-      v=thr(P[pi].r,len,it,s); if(v<tr)tr=v;  v=thr(P[pi].w,len,it,sw); if(v<tn)tn=v;
-      v=lat(P[pi].r,len,it,s); if(v<lr)lr=v;  v=lat(P[pi].w,len,it,sw); if(v<ln)ln=v; }
+      v=thr(P[pi].r,len,it,s); if(v<tr)tr=v;  v=thr(P[pi].w,len,it,s); if(v<tn)tn=v;
+      v=lat(P[pi].r,len,it,s); if(v<lr)lr=v;  v=lat(P[pi].w,len,it,s); if(v<ln)ln=v; }
     printf("%-10s %7zu | %8.2fns %8.2fns %+6.1f%% | %8.2fns %8.2fns %+6.1f%%\n",P[pi].n,len,tr,tn,(tr/tn-1)*100,lr,ln,(lr/ln-1)*100);
     fflush(stdout); } }
-  puts("premixed* = old rapidhash_withSeed vs new rapidhash_withPremixedSeed (seed premixed once)");
   return 0;
 }

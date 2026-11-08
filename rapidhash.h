@@ -295,8 +295,7 @@
   *  @param secret  Secret array.
   *
   *  Every rapidhash variant starts by premixing its seed. The result only depends on the seed and the secret,
-  *  so callers using a fixed seed (e.g. a hash table) can compute it once and use the *_withPremixedSeed
-  *  functions, which saves one 64x64->128 multiplication and its constants on every call.
+  *  so it is computed once, before the length dispatch, and passed to the *_internal_premixed functions.
   *
   *  Returns the premixed 64-bit seed.
   */
@@ -673,53 +672,4 @@ RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashMicro(const void *key, size_t len) 
  */
 RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashNano(const void *key, size_t len) RAPIDHASH_NOEXCEPT {
   return rapidhashNano_withSeed(key, len, 0);
-}
-
-/*
- *  Seed premixing for the *_withPremixedSeed functions.
- *
- *  @param seed    64-bit seed.
- *
- *  For a fixed seed (e.g. one per hash table), compute this once and pass the result to
- *  rapidhash_withPremixedSeed, rapidhashMicro_withPremixedSeed or rapidhashNano_withPremixedSeed.
- *  This saves one 64x64->128 multiplication and its constants on every call, which improves throughput.
- *  Latency is unchanged when the seed is loop-invariant, since the CPU already overlaps the premix.
- *
- *  rapidhash_withPremixedSeed(key, len, rapidhash_premix_seed(seed)) == rapidhash_withSeed(key, len, seed).
- *
- *  Returns the premixed 64-bit seed.
- */
-RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_premix_seed(uint64_t seed) RAPIDHASH_NOEXCEPT {
-  return rapidhash_premix_seed_internal(seed, rapid_secret);
-}
-
-/*
- *  rapidhash with a seed returned by rapidhash_premix_seed.
- *
- *  @param key       Buffer to be hashed.
- *  @param len       @key length, in bytes.
- *  @param premixed  Value returned by rapidhash_premix_seed(seed).
- *
- *  Returns the same 64-bit hash as rapidhash_withSeed(key, len, seed).
- */
-RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_withPremixedSeed(const void *key, size_t len, uint64_t premixed) RAPIDHASH_NOEXCEPT {
-  return rapidhash_internal_premixed(key, len, premixed, rapid_secret);
-}
-
-/*
- *  rapidhashMicro with a seed returned by rapidhash_premix_seed.
- *
- *  Returns the same 64-bit hash as rapidhashMicro_withSeed(key, len, seed).
- */
-RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashMicro_withPremixedSeed(const void *key, size_t len, uint64_t premixed) RAPIDHASH_NOEXCEPT {
-  return rapidhashMicro_internal_premixed(key, len, premixed, rapid_secret);
-}
-
-/*
- *  rapidhashNano with a seed returned by rapidhash_premix_seed.
- *
- *  Returns the same 64-bit hash as rapidhashNano_withSeed(key, len, seed).
- */
-RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashNano_withPremixedSeed(const void *key, size_t len, uint64_t premixed) RAPIDHASH_NOEXCEPT {
-  return rapidhashNano_internal_premixed(key, len, premixed, rapid_secret);
 }

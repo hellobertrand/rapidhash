@@ -86,19 +86,6 @@ The benchmarking program can be found in the [bench folder](https://github.com/N
 Performance tips
 -------------------------
 
-**Fixed seeds**  
-Every call premixes its seed with one 64x64->128 multiplication.  
-When the seed is fixed (e.g. one seed per hash table), premix it once and use the `*_withPremixedSeed` functions.  
-This saves the multiplication and its constants on every call: throughput improves by 10-25% on inputs up to 256 bytes on Apple M3, latency is unchanged.
-
-```c
-uint64_t premixed = rapidhash_premix_seed(seed);          /* once */
-uint64_t h = rapidhash_withPremixedSeed(key, len, premixed); /* == rapidhash_withSeed(key, len, seed) */
-```
-
-`rapidhashMicro_withPremixedSeed` and `rapidhashNano_withPremixedSeed` accept the same premixed value.  
-`rapidhash(key, len)` already gets this for free, since the compiler folds the default seed's premix.
-
 **x86-64: enable BMI2**  
 Compiling with `-mbmi2` (or `-march=x86-64-v3`) lets compilers use `mulx`, which does not tie the multiplication to `rax`/`rdx`.  
 This removes register moves from every round. No code change is needed.
