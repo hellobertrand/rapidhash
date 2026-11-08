@@ -289,21 +289,6 @@
  #endif
  
  /*
-  *  Seed premixing.
-  *
-  *  @param seed    64-bit seed.
-  *  @param secret  Secret array.
-  *
-  *  Every rapidhash variant starts by premixing its seed. The result only depends on the seed and the secret,
-  *  so it is computed once, before the length dispatch, and passed to the *_internal_premixed functions.
-  *
-  *  Returns the premixed 64-bit seed.
-  */
- RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_premix_seed_internal(uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
-   return seed ^ rapid_mix(seed ^ secret[2], secret[1]);
- }
-
- /*
   *  Final mixing step, shared by every variant.
   */
  RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_finish(uint64_t a, uint64_t b, uint64_t seed, size_t len, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
@@ -428,25 +413,6 @@ RAPIDHASH_NOINLINE uint64_t rapidhash_long_internal(const uint8_t *p, size_t len
 }
 
 /*
- *  rapidhash main function, with an already premixed seed.
- *
- *  @param key     Buffer to be hashed.
- *  @param len     @key length, in bytes.
- *  @param seed    Premixed 64-bit seed, as returned by rapidhash_premix_seed_internal.
- *  @param secret  Array of 64-bit secrets used to alter hash result predictably.
- *
- *  Returns a 64-bit hash.
- */
-RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_internal_premixed(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
-  const uint8_t *p=(const uint8_t *)key;
-  if (_likely_(len <= 16))
-    return rapidhash_short(p, len, seed, secret);
-  if (len <= 112)
-    return rapidhash_mid_internal(p, len, seed, secret);
-  return rapidhash_long_internal(p, len, seed, secret);
-}
-
-/*
  *  rapidhash main function.
  *
  *  @param key     Buffer to be hashed.
@@ -457,7 +423,13 @@ RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_internal_premixed(const void *key,
  *  Returns a 64-bit hash.
  */
 RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_internal(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
-  return rapidhash_internal_premixed(key, len, rapidhash_premix_seed_internal(seed, secret), secret);
+  const uint8_t *p=(const uint8_t *)key;
+  seed ^= rapid_mix(seed ^ secret[2], secret[1]);
+  if (_likely_(len <= 16))
+    return rapidhash_short(p, len, seed, secret);
+  if (len <= 112)
+    return rapidhash_mid_internal(p, len, seed, secret);
+  return rapidhash_long_internal(p, len, seed, secret);
 }
 
 /*
@@ -502,18 +474,6 @@ RAPIDHASH_NOINLINE uint64_t rapidhashMicro_long_internal(const uint8_t *p, size_
   return rapidhashMicro_mid_internal(p, i, seed, secret);
 }
 
-/*
- *  rapidhashMicro main function, with an already premixed seed.
- */
-RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashMicro_internal_premixed(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
-  const uint8_t *p=(const uint8_t *)key;
-  if (_likely_(len <= 16))
-    return rapidhash_short(p, len, seed, secret);
-  if (len <= 80)
-    return rapidhashMicro_mid_internal(p, len, seed, secret);
-  return rapidhashMicro_long_internal(p, len, seed, secret);
-}
-
  /*
   *  rapidhashMicro main function.
   *
@@ -525,7 +485,13 @@ RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashMicro_internal_premixed(const void 
   *  Returns a 64-bit hash.
   */
 RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashMicro_internal(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
-  return rapidhashMicro_internal_premixed(key, len, rapidhash_premix_seed_internal(seed, secret), secret);
+  const uint8_t *p=(const uint8_t *)key;
+  seed ^= rapid_mix(seed ^ secret[2], secret[1]);
+  if (_likely_(len <= 16))
+    return rapidhash_short(p, len, seed, secret);
+  if (len <= 80)
+    return rapidhashMicro_mid_internal(p, len, seed, secret);
+  return rapidhashMicro_long_internal(p, len, seed, secret);
 }
 
 /*
@@ -555,16 +521,6 @@ RAPIDHASH_INLINE uint64_t rapidhashNano_long_internal(const uint8_t *p, size_t l
   return rapidhash_finish(rapid_read64(p+i-16) ^ i, rapid_read64(p+i-8), seed, i, secret);
 }
 
-/*
- *  rapidhashNano main function, with an already premixed seed.
- */
-RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashNano_internal_premixed(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
-  const uint8_t *p=(const uint8_t *)key;
-  if (_likely_(len <= 16))
-    return rapidhash_short(p, len, seed, secret);
-  return rapidhashNano_long_internal(p, len, seed, secret);
-}
-
   /*
   *  rapidhashNano main function.
   *
@@ -576,7 +532,11 @@ RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashNano_internal_premixed(const void *
   *  Returns a 64-bit hash.
   */
 RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashNano_internal(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
-  return rapidhashNano_internal_premixed(key, len, rapidhash_premix_seed_internal(seed, secret), secret);
+  const uint8_t *p=(const uint8_t *)key;
+  seed ^= rapid_mix(seed ^ secret[2], secret[1]);
+  if (_likely_(len <= 16))
+    return rapidhash_short(p, len, seed, secret);
+  return rapidhashNano_long_internal(p, len, seed, secret);
 }
  
 /*
