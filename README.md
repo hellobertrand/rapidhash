@@ -13,13 +13,13 @@ The fastest recommended hash function by [SMHasher](https://github.com/rurban/sm
 
 **RapidhashMicro**  
 Designed for HPC and server applications, where cache misses make a noticeable performance detriment.  
-Clang-18+ compiles it to ~140 instructions without stack usage, both on x86-64 and aarch64.  
+Clang-18+ compiles it to ~150 instructions, both on x86-64 and aarch64. Inputs up to 80 bytes run without stack usage.  
 Faster for sizes up to 512 bytes, just 15%-20% slower for inputs above 1kb.  
 Produces same output as Rapidhash for inputs up to 80 bytes.
 
 **RapidhashNano**  
 Designed for Mobile and embedded applications, where keeping a small code size is a top priority.  
-Clang-18+ compiles it to less than 100 instructions without stack usage, both on x86-64 and aarch64.  
+Clang-18+ compiles it to ~100 instructions without stack usage, both on x86-64 and aarch64.  
 The fastest for sizes up to 48 bytes, but may be considerably slower for larger inputs.  
 Produces same output as Rapidhash for inputs up to 48 bytes.
 
@@ -82,6 +82,31 @@ Peak throughput when hashing files of 16Kb-2Mb
 Long-input measurements were taken compiling with the RAPIDHASH_UNROLLED macro.
 
 The benchmarking program can be found in the [bench folder](https://github.com/Nicoshev/rapidhash/tree/master/bench)
+
+Performance tips
+-------------------------
+
+**Fixed seeds**  
+Every call premixes its seed with one 64x64->128 multiplication.  
+When the seed is fixed (e.g. one seed per hash table), premix it once and use the `*_withPremixedSeed` functions.  
+This saves the multiplication and its constants on every call: throughput improves by 10-25% on inputs up to 256 bytes on Apple M3, latency is unchanged.
+
+```c
+uint64_t premixed = rapidhash_premix_seed(seed);          /* once */
+uint64_t h = rapidhash_withPremixedSeed(key, len, premixed); /* == rapidhash_withSeed(key, len, seed) */
+```
+
+`rapidhashMicro_withPremixedSeed` and `rapidhashNano_withPremixedSeed` accept the same premixed value.  
+`rapidhash(key, len)` already gets this for free, since the compiler folds the default seed's premix.
+
+**x86-64: enable BMI2**  
+Compiling with `-mbmi2` (or `-march=x86-64-v3`) lets compilers use `mulx`, which does not tie the multiplication to `rax`/`rdx`.  
+This removes register moves from every round. No code change is needed.
+
+**Code layout**  
+For rapidhash and rapidhashMicro, inputs above 16 bytes are handled by out-of-line functions. The inlined part of each call stays small (~50 instructions), and the 0-16 bytes path does not need to save callee-saved registers.  
+rapidhashNano stays fully inlined.  
+Define `RAPIDHASH_NO_SPLIT` to let the compiler decide on inlining instead.
 
 Collision-based hash quality study
 -------------------------
