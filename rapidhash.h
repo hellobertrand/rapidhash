@@ -118,11 +118,14 @@
  # define RAPIDHASH_OPAQUE(x) ((void)0)
  #endif
 /*
- *  GCC keeps every secret of the bulk loop in a register, which forces callee-saved register spills
- *  that are not amortized on short loops. Reloading them each iteration is cheaper with GCC.
- *  Clang already allocates them well, and extra loads slow its loop down.
+ *  GCC only: reload the secrets on every iteration of the bulk loop where registers are scarce.
+ *  On x86, there are too few registers to keep seven secrets, and memory operands are cheaper than spills.
+ *  On Apple arm64 (x18 reserved, mandatory frame pointer), keeping them needs callee-saved spills
+ *  that short loops do not amortize.
+ *  Elsewhere, such as Linux arm64, keeping them in registers gives the shortest loop.
+ *  Clang allocates them well on its own.
  */
- #if defined(__GNUC__) && !defined(__clang__)
+ #if defined(__GNUC__) && !defined(__clang__) && (defined(__x86_64__) || defined(__i386__) || defined(__APPLE__))
  # define RAPIDHASH_OPAQUE_LOOP(x) RAPIDHASH_OPAQUE(x)
  #else
  # define RAPIDHASH_OPAQUE_LOOP(x) ((void)0)
