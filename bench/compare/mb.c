@@ -1,6 +1,7 @@
 /* Micro-benchmark old vs new. Usage: mb [len...]   (default: a size sweep from 0 B to 512 KB)
  * thr = independent calls (throughput), lat = next input offset depends on previous hash (latency).
- * Each figure is the minimum of 7 repetitions. Positive gain = new is faster. */
+ * Each figure is the minimum of 7 repetitions. Positive gain = new is faster.
+ * With HAS_PREMIX, only the premixed seed API is benchmarked, against the old *_withSeed. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -17,12 +18,12 @@ int main(int argc,char**argv){
   for(size_t i=0;i<nl;i++) if(L[i]>maxl) maxl=L[i];
   buf=malloc(maxl+128); for(size_t i=0;i<maxl+128;i++) buf[i]=(unsigned char)(i*2654435761u>>13);
   uint64_t s=g_seed, pm=PREMIX(s);
+#ifdef HAS_PREMIX /* old *_withSeed(seed) vs new *_withPremixedSeed(premix(seed)) */
+  struct {const char*n; hf r,w; int p;} P[]={{"rapidhash",ref_h,new_hp,1},{"Micro",ref_m,new_mp,1},{"Nano",ref_n,new_np,1}};
+#else
   struct {const char*n; hf r,w; int p;} P[]={{"rapidhash",ref_h0,new_h0,0},{"Micro",ref_m0,new_m0,0},{"Nano",ref_n0,new_n0,0},
-    {"withSeed",ref_h,new_h,0},
-#ifdef HAS_PREMIX
-    {"premixed*",ref_h,new_hp,1},
+    {"withSeed",ref_h,new_h,0}};
 #endif
-  };
   const int np=(int)(sizeof P/sizeof *P);
   printf("%-10s %7s | %10s %10s %7s | %10s %10s %7s\n","variant","len","thr old","thr new","gain","lat old","lat new","gain");
   for(int pi=0;pi<np;pi++){ for(size_t li=0;li<nl;li++){ size_t len=L[li];
@@ -34,7 +35,7 @@ int main(int argc,char**argv){
     printf("%-10s %7zu | %8.2fns %8.2fns %+6.1f%% | %8.2fns %8.2fns %+6.1f%%\n",P[pi].n,len,tr,tn,(tr/tn-1)*100,lr,ln,(lr/ln-1)*100);
     fflush(stdout); } }
 #ifdef HAS_PREMIX
-  puts("premixed* = old rapidhash_withSeed vs new rapidhash_withPremixedSeed (seed premixed once)");
+  puts("old = *_withSeed(seed), new = *_withPremixedSeed(premixed), with the seed premixed once");
 #endif
   return 0;
 }

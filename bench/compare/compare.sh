@@ -15,8 +15,8 @@
 #   AA       set to 1 to benchmark the old header against itself: the gains printed are then pure
 #            measurement noise (code placement, frequency), to calibrate the real comparison
 #
-# When the new header provides rapidhash_withPremixedSeed, the premixed variants are checked
-# and benchmarked too.
+# When the new header provides rapidhash_withPremixedSeed, every variant is still checked for
+# bit-exactness, but only the premixed seed API is benchmarked (old *_withSeed vs new *_withPremixedSeed).
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
 REF=${1:-master}; [ $# -gt 0 ] && shift
