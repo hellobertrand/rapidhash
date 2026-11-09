@@ -12,8 +12,8 @@ uint64_t F(h)(const void*k,size_t l,uint64_t s){return rapidhash_withSeed(k,l,s)
 uint64_t F(m)(const void*k,size_t l,uint64_t s){return rapidhashMicro_withSeed(k,l,s);}
 uint64_t F(n)(const void*k,size_t l,uint64_t s){return rapidhashNano_withSeed(k,l,s);}
 #ifdef HAS_PREMIX /* set by compare.sh when the new header has the premixed seed API */
-uint64_t F(pm)(uint64_t s){return rapidhash_premix_seed(s);}
-uint64_t F(hp)(const void*k,size_t l,uint64_t p){return rapidhash_withPremixedSeed(k,l,p);}
-uint64_t F(mp)(const void*k,size_t l,uint64_t p){return rapidhashMicro_withPremixedSeed(k,l,p);}
-uint64_t F(np)(const void*k,size_t l,uint64_t p){return rapidhashNano_withPremixedSeed(k,l,p);}
+uint64_t F(pm)(uint64_t s){return rapidhash_premixSeed(s).value;}
+uint64_t F(hp)(const void*k,size_t l,uint64_t p){rapidhash_premixed_t q={p}; return rapidhash_withPremixedSeed(k,l,q);}
+uint64_t F(mp)(const void*k,size_t l,uint64_t p){rapidhash_premixed_t q={p}; return rapidhashMicro_withPremixedSeed(k,l,q);}
+uint64_t F(np)(const void*k,size_t l,uint64_t p){rapidhash_premixed_t q={p}; return rapidhashNano_withPremixedSeed(k,l,q);}
 #endif
