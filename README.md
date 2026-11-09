@@ -83,6 +83,22 @@ Long-input measurements were taken compiling with the RAPIDHASH_UNROLLED macro.
 
 The benchmarking program can be found in the [bench folder](https://github.com/Nicoshev/rapidhash/tree/master/bench)
 
+Fixed seeds
+-------------------------
+
+Every call premixes its seed with one 64x64->128 multiplication.  
+When the seed is fixed (e.g. one seed per hash table), premix it once with `rapidhash_premixSeed` and use the `*_withPremixedSeed` functions.  
+This saves the multiplication and its constants on every call. It mainly improves throughput on short inputs; latency is never worse.
+
+```c
+rapidhash_premixed_t premixed = rapidhash_premixSeed(seed);  /* once */
+uint64_t h = rapidhash_withPremixedSeed(key, len, premixed); /* == rapidhash_withSeed(key, len, seed) */
+```
+
+`rapidhashMicro_withPremixedSeed` and `rapidhashNano_withPremixedSeed` accept the same premixed value.  
+The premixed seed has its own type, so a raw seed cannot be passed by mistake.  
+With optimizations enabled, `rapidhash(key, len)` already gets this for free: the compiler folds the default seed's premix.
+
 Collision-based hash quality study
 -------------------------
 

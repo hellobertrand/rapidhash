@@ -231,18 +231,32 @@
  #endif
  
  /*
-  *  rapidhash main function.
+  *  Seed premixing, shared by every variant.
+  *
+  *  @param seed    64-bit seed.
+  *  @param secret  Array of 64-bit secrets used to alter hash result predictably.
+  *
+  *  The result only depends on the seed and the secret, so callers using a fixed seed can compute it
+  *  once (see rapidhash_premixSeed) instead of on every call.
+  *
+  *  Returns the premixed 64-bit seed.
+  */
+ RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_premixSeed_internal(uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
+   return seed ^ rapid_mix(seed ^ secret[2], secret[1]);
+ }
+
+ /*
+  *  rapidhash main function, with an already premixed seed.
   *
   *  @param key     Buffer to be hashed.
   *  @param len     @key length, in bytes.
-  *  @param seed    64-bit seed used to alter the hash result predictably.
+  *  @param seed    Premixed 64-bit seed, as returned by rapidhash_premixSeed_internal.
   *  @param secret  Triplet of 64-bit secrets used to alter hash result predictably.
   *
   *  Returns a 64-bit hash.
   */
-RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_internal(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
+RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_internal_premixed(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
   const uint8_t *p=(const uint8_t *)key;
-  seed ^= rapid_mix(seed ^ secret[2], secret[1]);
   uint64_t a=0, b=0;
   size_t i = len;
   if (_likely_(len <= 16)) {
@@ -343,19 +357,32 @@ RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_internal(const void *key, size_t l
   return rapid_mix(a ^ secret[7], b ^ secret[1] ^ i);
 }
 
+/*
+ *  rapidhash main function.
+ *
+ *  @param key     Buffer to be hashed.
+ *  @param len     @key length, in bytes.
+ *  @param seed    64-bit seed used to alter the hash result predictably.
+ *  @param secret  Array of 64-bit secrets used to alter hash result predictably.
+ *
+ *  Returns a 64-bit hash.
+ */
+RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_internal(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
+  return rapidhash_internal_premixed(key, len, rapidhash_premixSeed_internal(seed, secret), secret);
+}
+
  /*
-  *  rapidhashMicro main function.
+  *  rapidhashMicro main function, with an already premixed seed.
   *
   *  @param key     Buffer to be hashed.
   *  @param len     @key length, in bytes.
-  *  @param seed    64-bit seed used to alter the hash result predictably.
+  *  @param seed    Premixed 64-bit seed, as returned by rapidhash_premixSeed_internal.
   *  @param secret  Triplet of 64-bit secrets used to alter hash result predictably.
   *
   *  Returns a 64-bit hash.
   */
-  RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashMicro_internal(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
+  RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashMicro_internal_premixed(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
     const uint8_t *p=(const uint8_t *)key;
-    seed ^= rapid_mix(seed ^ secret[2], secret[1]);
     uint64_t a=0, b=0;
     size_t i = len;
     if (_likely_(len <= 16)) {
@@ -413,19 +440,32 @@ RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_internal(const void *key, size_t l
     return rapid_mix(a ^ secret[7], b ^ secret[1] ^ i);
   }
 
+/*
+ *  rapidhashMicro main function.
+ *
+ *  @param key     Buffer to be hashed.
+ *  @param len     @key length, in bytes.
+ *  @param seed    64-bit seed used to alter the hash result predictably.
+ *  @param secret  Array of 64-bit secrets used to alter hash result predictably.
+ *
+ *  Returns a 64-bit hash.
+ */
+RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashMicro_internal(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
+  return rapidhashMicro_internal_premixed(key, len, rapidhash_premixSeed_internal(seed, secret), secret);
+}
+
   /*
-  *  rapidhashNano main function.
+  *  rapidhashNano main function, with an already premixed seed.
   *
   *  @param key     Buffer to be hashed.
   *  @param len     @key length, in bytes.
-  *  @param seed    64-bit seed used to alter the hash result predictably.
+  *  @param seed    Premixed 64-bit seed, as returned by rapidhash_premixSeed_internal.
   *  @param secret  Triplet of 64-bit secrets used to alter hash result predictably.
   *
   *  Returns a 64-bit hash.
   */
-  RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashNano_internal(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
+  RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashNano_internal_premixed(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
     const uint8_t *p=(const uint8_t *)key;
-    seed ^= rapid_mix(seed ^ secret[2], secret[1]);
     uint64_t a=0, b=0;
     size_t i = len;
     if (_likely_(len <= 16)) {
@@ -471,6 +511,20 @@ RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_internal(const void *key, size_t l
     rapid_mum(&a, &b);
     return rapid_mix(a ^ secret[7], b ^ secret[1] ^ i);
   }
+
+/*
+ *  rapidhashNano main function.
+ *
+ *  @param key     Buffer to be hashed.
+ *  @param len     @key length, in bytes.
+ *  @param seed    64-bit seed used to alter the hash result predictably.
+ *  @param secret  Array of 64-bit secrets used to alter hash result predictably.
+ *
+ *  Returns a 64-bit hash.
+ */
+RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashNano_internal(const void *key, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
+  return rapidhashNano_internal_premixed(key, len, rapidhash_premixSeed_internal(seed, secret), secret);
+}
  
 /*
  *  rapidhash seeded hash function.
@@ -565,4 +619,70 @@ RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashMicro(const void *key, size_t len) 
  */
 RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashNano(const void *key, size_t len) RAPIDHASH_NOEXCEPT {
   return rapidhashNano_withSeed(key, len, 0);
+}
+
+/*
+ *  Premixed seed, as returned by rapidhash_premixSeed and accepted by the *_withPremixedSeed functions.
+ *
+ *  A distinct type rather than a plain uint64_t, so that a raw seed cannot be passed to the
+ *  *_withPremixedSeed functions by mistake: that would skip the seed mixing and weaken the hash.
+ */
+typedef struct { uint64_t value; } rapidhash_premixed_t;
+
+/*
+ *  Seed premixing for the *_withPremixedSeed functions.
+ *
+ *  @param seed    64-bit seed.
+ *
+ *  For a fixed seed (e.g. one per hash table), compute this once and pass the result to
+ *  rapidhash_withPremixedSeed, rapidhashMicro_withPremixedSeed or rapidhashNano_withPremixedSeed.
+ *  This saves one 64x64->128 multiplication and its constants on every call.
+ *  It mainly improves throughput; latency is never worse.
+ *
+ *  rapidhash_withPremixedSeed(key, len, rapidhash_premixSeed(seed)) == rapidhash_withSeed(key, len, seed).
+ *
+ *  Returns the premixed seed.
+ */
+RAPIDHASH_INLINE_CONSTEXPR rapidhash_premixed_t rapidhash_premixSeed(uint64_t seed) RAPIDHASH_NOEXCEPT {
+  rapidhash_premixed_t premixed = { rapidhash_premixSeed_internal(seed, rapid_secret) };
+  return premixed;
+}
+
+/*
+ *  rapidhash with a premixed seed.
+ *
+ *  @param key       Buffer to be hashed.
+ *  @param len       @key length, in bytes.
+ *  @param premixed  Value returned by rapidhash_premixSeed(seed).
+ *
+ *  Returns the same 64-bit hash as rapidhash_withSeed(key, len, seed).
+ */
+RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash_withPremixedSeed(const void *key, size_t len, rapidhash_premixed_t premixed) RAPIDHASH_NOEXCEPT {
+  return rapidhash_internal_premixed(key, len, premixed.value, rapid_secret);
+}
+
+/*
+ *  rapidhashMicro with a premixed seed.
+ *
+ *  @param key       Buffer to be hashed.
+ *  @param len       @key length, in bytes.
+ *  @param premixed  Value returned by rapidhash_premixSeed(seed).
+ *
+ *  Returns the same 64-bit hash as rapidhashMicro_withSeed(key, len, seed).
+ */
+RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashMicro_withPremixedSeed(const void *key, size_t len, rapidhash_premixed_t premixed) RAPIDHASH_NOEXCEPT {
+  return rapidhashMicro_internal_premixed(key, len, premixed.value, rapid_secret);
+}
+
+/*
+ *  rapidhashNano with a premixed seed.
+ *
+ *  @param key       Buffer to be hashed.
+ *  @param len       @key length, in bytes.
+ *  @param premixed  Value returned by rapidhash_premixSeed(seed).
+ *
+ *  Returns the same 64-bit hash as rapidhashNano_withSeed(key, len, seed).
+ */
+RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhashNano_withPremixedSeed(const void *key, size_t len, rapidhash_premixed_t premixed) RAPIDHASH_NOEXCEPT {
+  return rapidhashNano_internal_premixed(key, len, premixed.value, rapid_secret);
 }
