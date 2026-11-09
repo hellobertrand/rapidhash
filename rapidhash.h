@@ -107,31 +107,6 @@
  #endif
 
  /*
-  *  Optimization barrier: hides a value from the optimizer so that it stays in a register.
-  *  Used on the secret pointer of the bulk loops, so that compilers load the secrets once
-  *  (or use them as memory operands on x86) instead of rebuilding 64-bit immediates on
-  *  every iteration (mov/movk sequences on aarch64, movabs on x86-64).
-  */
- #if (defined(__GNUC__) || defined(__clang__)) && !defined(RAPIDHASH_NO_OPAQUE)
- # define RAPIDHASH_OPAQUE(x) __asm__("" : "+r"(x))
- #else
- # define RAPIDHASH_OPAQUE(x) ((void)0)
- #endif
-/*
- *  GCC only: reload the secrets on every iteration of the bulk loop where registers are scarce.
- *  On x86, there are too few registers to keep seven secrets, and memory operands are cheaper than spills.
- *  On Apple arm64 (x18 reserved, mandatory frame pointer), keeping them needs callee-saved spills
- *  that short loops do not amortize.
- *  Elsewhere, such as Linux arm64, keeping them in registers gives the shortest loop.
- *  Clang allocates them well on its own.
- */
- #if defined(__GNUC__) && !defined(__clang__) && (defined(__x86_64__) || defined(__i386__) || defined(__APPLE__))
- # define RAPIDHASH_OPAQUE_LOOP(x) RAPIDHASH_OPAQUE(x)
- #else
- # define RAPIDHASH_OPAQUE_LOOP(x) ((void)0)
- #endif
-
- /*
   *  Unrolled macro.
   *  Improves large input speed, but increases code size and worsens small input speed.
   *
@@ -351,54 +326,49 @@ RAPIDHASH_NOINLINE uint64_t rapidhash_mid_internal(const uint8_t *p, size_t i, u
 }
 
 RAPIDHASH_NOINLINE uint64_t rapidhash_long_internal(const uint8_t *p, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
-  const uint64_t *s = secret;
-  RAPIDHASH_OPAQUE(s);
   size_t i = len;
   uint64_t see1 = seed, see2 = seed;
   uint64_t see3 = seed, see4 = seed;
   uint64_t see5 = seed, see6 = seed;
 #ifdef RAPIDHASH_COMPACT
   do {
-    RAPIDHASH_OPAQUE_LOOP(s);
-    seed = rapid_mix(rapid_read64(p) ^ s[0], rapid_read64(p + 8) ^ seed);
-    see1 = rapid_mix(rapid_read64(p + 16) ^ s[1], rapid_read64(p + 24) ^ see1);
-    see2 = rapid_mix(rapid_read64(p + 32) ^ s[2], rapid_read64(p + 40) ^ see2);
-    see3 = rapid_mix(rapid_read64(p + 48) ^ s[3], rapid_read64(p + 56) ^ see3);
-    see4 = rapid_mix(rapid_read64(p + 64) ^ s[4], rapid_read64(p + 72) ^ see4);
-    see5 = rapid_mix(rapid_read64(p + 80) ^ s[5], rapid_read64(p + 88) ^ see5);
-    see6 = rapid_mix(rapid_read64(p + 96) ^ s[6], rapid_read64(p + 104) ^ see6);
+    seed = rapid_mix(rapid_read64(p) ^ secret[0], rapid_read64(p + 8) ^ seed);
+    see1 = rapid_mix(rapid_read64(p + 16) ^ secret[1], rapid_read64(p + 24) ^ see1);
+    see2 = rapid_mix(rapid_read64(p + 32) ^ secret[2], rapid_read64(p + 40) ^ see2);
+    see3 = rapid_mix(rapid_read64(p + 48) ^ secret[3], rapid_read64(p + 56) ^ see3);
+    see4 = rapid_mix(rapid_read64(p + 64) ^ secret[4], rapid_read64(p + 72) ^ see4);
+    see5 = rapid_mix(rapid_read64(p + 80) ^ secret[5], rapid_read64(p + 88) ^ see5);
+    see6 = rapid_mix(rapid_read64(p + 96) ^ secret[6], rapid_read64(p + 104) ^ see6);
     p += 112;
     i -= 112;
   } while(i > 112);
 #else
   while (i > 224) {
-    RAPIDHASH_OPAQUE_LOOP(s);
-    seed = rapid_mix(rapid_read64(p) ^ s[0], rapid_read64(p + 8) ^ seed);
-    see1 = rapid_mix(rapid_read64(p + 16) ^ s[1], rapid_read64(p + 24) ^ see1);
-    see2 = rapid_mix(rapid_read64(p + 32) ^ s[2], rapid_read64(p + 40) ^ see2);
-    see3 = rapid_mix(rapid_read64(p + 48) ^ s[3], rapid_read64(p + 56) ^ see3);
-    see4 = rapid_mix(rapid_read64(p + 64) ^ s[4], rapid_read64(p + 72) ^ see4);
-    see5 = rapid_mix(rapid_read64(p + 80) ^ s[5], rapid_read64(p + 88) ^ see5);
-    see6 = rapid_mix(rapid_read64(p + 96) ^ s[6], rapid_read64(p + 104) ^ see6);
-    seed = rapid_mix(rapid_read64(p + 112) ^ s[0], rapid_read64(p + 120) ^ seed);
-    see1 = rapid_mix(rapid_read64(p + 128) ^ s[1], rapid_read64(p + 136) ^ see1);
-    see2 = rapid_mix(rapid_read64(p + 144) ^ s[2], rapid_read64(p + 152) ^ see2);
-    see3 = rapid_mix(rapid_read64(p + 160) ^ s[3], rapid_read64(p + 168) ^ see3);
-    see4 = rapid_mix(rapid_read64(p + 176) ^ s[4], rapid_read64(p + 184) ^ see4);
-    see5 = rapid_mix(rapid_read64(p + 192) ^ s[5], rapid_read64(p + 200) ^ see5);
-    see6 = rapid_mix(rapid_read64(p + 208) ^ s[6], rapid_read64(p + 216) ^ see6);
+    seed = rapid_mix(rapid_read64(p) ^ secret[0], rapid_read64(p + 8) ^ seed);
+    see1 = rapid_mix(rapid_read64(p + 16) ^ secret[1], rapid_read64(p + 24) ^ see1);
+    see2 = rapid_mix(rapid_read64(p + 32) ^ secret[2], rapid_read64(p + 40) ^ see2);
+    see3 = rapid_mix(rapid_read64(p + 48) ^ secret[3], rapid_read64(p + 56) ^ see3);
+    see4 = rapid_mix(rapid_read64(p + 64) ^ secret[4], rapid_read64(p + 72) ^ see4);
+    see5 = rapid_mix(rapid_read64(p + 80) ^ secret[5], rapid_read64(p + 88) ^ see5);
+    see6 = rapid_mix(rapid_read64(p + 96) ^ secret[6], rapid_read64(p + 104) ^ see6);
+    seed = rapid_mix(rapid_read64(p + 112) ^ secret[0], rapid_read64(p + 120) ^ seed);
+    see1 = rapid_mix(rapid_read64(p + 128) ^ secret[1], rapid_read64(p + 136) ^ see1);
+    see2 = rapid_mix(rapid_read64(p + 144) ^ secret[2], rapid_read64(p + 152) ^ see2);
+    see3 = rapid_mix(rapid_read64(p + 160) ^ secret[3], rapid_read64(p + 168) ^ see3);
+    see4 = rapid_mix(rapid_read64(p + 176) ^ secret[4], rapid_read64(p + 184) ^ see4);
+    see5 = rapid_mix(rapid_read64(p + 192) ^ secret[5], rapid_read64(p + 200) ^ see5);
+    see6 = rapid_mix(rapid_read64(p + 208) ^ secret[6], rapid_read64(p + 216) ^ see6);
     p += 224;
     i -= 224;
   }
   if (i > 112) {
-    RAPIDHASH_OPAQUE_LOOP(s);
-    seed = rapid_mix(rapid_read64(p) ^ s[0], rapid_read64(p + 8) ^ seed);
-    see1 = rapid_mix(rapid_read64(p + 16) ^ s[1], rapid_read64(p + 24) ^ see1);
-    see2 = rapid_mix(rapid_read64(p + 32) ^ s[2], rapid_read64(p + 40) ^ see2);
-    see3 = rapid_mix(rapid_read64(p + 48) ^ s[3], rapid_read64(p + 56) ^ see3);
-    see4 = rapid_mix(rapid_read64(p + 64) ^ s[4], rapid_read64(p + 72) ^ see4);
-    see5 = rapid_mix(rapid_read64(p + 80) ^ s[5], rapid_read64(p + 88) ^ see5);
-    see6 = rapid_mix(rapid_read64(p + 96) ^ s[6], rapid_read64(p + 104) ^ see6);
+    seed = rapid_mix(rapid_read64(p) ^ secret[0], rapid_read64(p + 8) ^ seed);
+    see1 = rapid_mix(rapid_read64(p + 16) ^ secret[1], rapid_read64(p + 24) ^ see1);
+    see2 = rapid_mix(rapid_read64(p + 32) ^ secret[2], rapid_read64(p + 40) ^ see2);
+    see3 = rapid_mix(rapid_read64(p + 48) ^ secret[3], rapid_read64(p + 56) ^ see3);
+    see4 = rapid_mix(rapid_read64(p + 64) ^ secret[4], rapid_read64(p + 72) ^ see4);
+    see5 = rapid_mix(rapid_read64(p + 80) ^ secret[5], rapid_read64(p + 88) ^ see5);
+    see6 = rapid_mix(rapid_read64(p + 96) ^ secret[6], rapid_read64(p + 104) ^ see6);
     p += 112;
     i -= 112;
   }
@@ -452,18 +422,15 @@ RAPIDHASH_NOINLINE uint64_t rapidhashMicro_mid_internal(const uint8_t *p, size_t
 }
 
 RAPIDHASH_NOINLINE uint64_t rapidhashMicro_long_internal(const uint8_t *p, size_t len, uint64_t seed, const uint64_t* secret) RAPIDHASH_NOEXCEPT {
-  const uint64_t *s = secret;
-  RAPIDHASH_OPAQUE(s);
   size_t i = len;
   uint64_t see1 = seed, see2 = seed;
   uint64_t see3 = seed, see4 = seed;
   do {
-    RAPIDHASH_OPAQUE_LOOP(s);
-    seed = rapid_mix(rapid_read64(p) ^ s[0], rapid_read64(p + 8) ^ seed);
-    see1 = rapid_mix(rapid_read64(p + 16) ^ s[1], rapid_read64(p + 24) ^ see1);
-    see2 = rapid_mix(rapid_read64(p + 32) ^ s[2], rapid_read64(p + 40) ^ see2);
-    see3 = rapid_mix(rapid_read64(p + 48) ^ s[3], rapid_read64(p + 56) ^ see3);
-    see4 = rapid_mix(rapid_read64(p + 64) ^ s[4], rapid_read64(p + 72) ^ see4);
+    seed = rapid_mix(rapid_read64(p) ^ secret[0], rapid_read64(p + 8) ^ seed);
+    see1 = rapid_mix(rapid_read64(p + 16) ^ secret[1], rapid_read64(p + 24) ^ see1);
+    see2 = rapid_mix(rapid_read64(p + 32) ^ secret[2], rapid_read64(p + 40) ^ see2);
+    see3 = rapid_mix(rapid_read64(p + 48) ^ secret[3], rapid_read64(p + 56) ^ see3);
+    see4 = rapid_mix(rapid_read64(p + 64) ^ secret[4], rapid_read64(p + 72) ^ see4);
     p += 80;
     i -= 80;
   } while(i > 80);
@@ -572,7 +539,7 @@ RAPIDHASH_INLINE_CONSTEXPR uint64_t rapidhash(const void *key, size_t len) RAPID
  *  rapidhashMicro seeded hash function.
  *
  *  Designed for HPC and server applications, where cache misses make a noticeable performance detriment.
- *  Clang-18+ compiles it to ~150 instructions, both on x86-64 and aarch64. Inputs up to 80 bytes run without stack usage.
+ *  Clang-18+ compiles it to ~165 instructions (~50 inlined per call site), both on x86-64 and aarch64. Inputs up to 80 bytes run without stack usage.
  *  Faster for sizes up to 512 bytes, just 15%-20% slower for inputs above 1kb.
  *
  *  @param key     Buffer to be hashed.

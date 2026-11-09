@@ -13,7 +13,7 @@ The fastest recommended hash function by [SMHasher](https://github.com/rurban/sm
 
 **RapidhashMicro**  
 Designed for HPC and server applications, where cache misses make a noticeable performance detriment.  
-Clang-18+ compiles it to ~150 instructions, both on x86-64 and aarch64. Inputs up to 80 bytes run without stack usage.  
+Clang-18+ compiles it to ~165 instructions (~50 inlined per call site), both on x86-64 and aarch64. Inputs up to 80 bytes run without stack usage.  
 Faster for sizes up to 512 bytes, just 15%-20% slower for inputs above 1kb.  
 Produces same output as Rapidhash for inputs up to 80 bytes.
 
